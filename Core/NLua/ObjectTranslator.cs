@@ -337,11 +337,7 @@ namespace NLua
 
 		public bool IsExtensionMethodPresent (Type type, string name)
 		{
-#if !ENABLE_EXTENSION_METHODS_SEARCH			
-			return false;
-#else 
 			return GetExtensionMethod (type, name) != null;
-#endif
 		}
 
 		public MethodInfo GetExtensionMethod (Type type, string name)
