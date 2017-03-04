@@ -1157,7 +1157,6 @@ end
 			}
 
 			Close ();
-			GC.WaitForPendingFinalizers ();
 		}
 		#endregion
 	}
