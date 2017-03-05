@@ -102,7 +102,7 @@ namespace NLua
 		/// <summary>
 		/// Used to protect the (global) object translator pool during add/remove
 		/// </summary>
-		private static readonly object translatorPoolLock = new object();
+		private static readonly object[] translatorPoolLocks = new object[31];
 
 		/// <summary>
 		/// Used to ensure multiple .net threads all get serialized by this single lock for access to the lua stack/objects
@@ -259,6 +259,17 @@ function luanet.each(o)
    end
 end
 ";
+		/// <summary>
+		/// Class initialization
+		/// </summary>
+		static Lua ()
+		{
+			// Initialize ('partitioned') locks
+			for (int i = 0; i < translatorPoolLocks.Length; i++)
+			{
+				translatorPoolLocks[i] = new object();
+			}
+		}
 
 		#region Globals auto-complete
 		/// <summary>
@@ -323,6 +334,7 @@ end
 			LuaLib.LuaSetTable (luaState, -3);
 			LuaLib.LuaNetPopGlobalTable (luaState);
 			translator = new ObjectTranslator (this, luaState);
+			var translatorPoolLock = GetTranslatorPoolLock(luaState);
 			lock (translatorPoolLock)
 			{
 				ObjectTranslatorPool.Instance.Add (luaState, translator);
@@ -337,6 +349,7 @@ end
 				return;
 
 			if (! CheckNull.IsNull(luaState)) {
+				var translatorPoolLock = GetTranslatorPoolLock(luaState);
 				lock (translatorPoolLock)
 				{
 					LuaCore.LuaClose (luaState);
@@ -352,6 +365,16 @@ end
 		{
 			string reason = string.Format ("unprotected error in call to Lua API ({0})", LuaLib.LuaToString (luaState, -1));
 			throw new LuaException (reason);
+		}
+
+		/// <summary>
+		/// Select object translator pool lock (partition), based on Lua state
+		/// </summary>
+		static object GetTranslatorPoolLock(LuaState luaState)
+		{
+			var lockNo = ((uint) luaState.GetHashCode()) % translatorPoolLocks.Length;
+
+			return translatorPoolLocks[lockNo];
 		}
 
 		/// <summary>

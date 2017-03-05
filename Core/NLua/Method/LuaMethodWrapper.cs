@@ -156,11 +156,12 @@ namespace NLua.Method
 							throw new LuaException ("Lua stack overflow");
 
 						object [] args = _LastCalledMethod.args;
+						MethodArgs[] argTypes = _LastCalledMethod.argTypes;
 
 						try {
-							for (int i = 0; i < _LastCalledMethod.argTypes.Length; i++) {
+							for (int i = 0; i < argTypes.Length; i++) {
 
-								MethodArgs type = _LastCalledMethod.argTypes [i];
+								MethodArgs type = argTypes [i];
 
 								int index = i + 1 + numStackToSkip;
 
@@ -168,26 +169,26 @@ namespace NLua.Method
 									return type.extractValue (luaState, currentParam);							
 								};
 
-								if (_LastCalledMethod.argTypes [i].isParamsArray) {
-									int count = index - _LastCalledMethod.argTypes.Length;
+								if (argTypes [i].isParamsArray) {
+									int count = index - argTypes.Length;
 									Array paramArray = _Translator.TableToArray (valueExtractor, type.paramsArrayType, index, count);
-									args [_LastCalledMethod.argTypes [i].index] = paramArray;
+									args [argTypes [i].index] = paramArray;
 								} else {
 									args [type.index] = valueExtractor (index);
 								}
 
-								if (_LastCalledMethod.args [_LastCalledMethod.argTypes [i].index] == null &&
+								if (args [argTypes [i].index] == null &&
 									!LuaLib.LuaIsNil (luaState, i + 1 + numStackToSkip))
 									throw new LuaException (string.Format("argument number {0} is invalid",(i + 1)));
 							}
 
 							if (_IsStatic)
-								_Translator.Push (luaState, method.Invoke (null, _LastCalledMethod.args));
+								_Translator.Push (luaState, method.Invoke (null, args));
 							else {
 								if (method.IsConstructor)
-									_Translator.Push (luaState, ((ConstructorInfo)method).Invoke (_LastCalledMethod.args));
+									_Translator.Push (luaState, ((ConstructorInfo)method).Invoke (args));
 								else
-									_Translator.Push (luaState, method.Invoke (targetObject, _LastCalledMethod.args));
+									_Translator.Push (luaState, method.Invoke (targetObject, args));
 							}
 
 							failedCall = false;
