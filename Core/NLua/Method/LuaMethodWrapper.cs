@@ -95,7 +95,8 @@ namespace NLua.Method
 				_ExtractTarget = translator.typeChecker.GetExtractor (targetType);
 
 			_IsStatic = (bindingType & BindingFlags.Static) == BindingFlags.Static;
-			_Members  = GetMethodsRecursively (targetType.UnderlyingSystemType, methodName, bindingType | BindingFlags.Public);
+			_Members  = GetMethodsRecursively (targetType.UnderlyingSystemType, methodName, bindingType | 
+				BindingFlags.Public | BindingFlags.DeclaredOnly);
 		}
 
 		MethodInfo [] GetMethodsRecursively (Type type, string methodName, BindingFlags bindingType)
@@ -159,6 +160,8 @@ namespace NLua.Method
 						MethodArgs[] argTypes = _LastCalledMethod.argTypes;
 
 						try {
+							bool matched = true;
+
 							for (int i = 0; i < argTypes.Length; i++) {
 
 								MethodArgs type = argTypes [i];
@@ -177,21 +180,27 @@ namespace NLua.Method
 									args [type.index] = valueExtractor (index);
 								}
 
-								if (args [argTypes [i].index] == null &&
-									!LuaLib.LuaIsNil (luaState, i + 1 + numStackToSkip))
-									throw new LuaException (string.Format("argument number {0} is invalid",(i + 1)));
+								if (args [argTypes [i].index] == null && 
+									!LuaLib.LuaIsNil (luaState, i + 1 + numStackToSkip)) {
+									// Cache did not work - try to resolve as another overload
+									matched = false;
+									break;
+								}
 							}
 
-							if (_IsStatic)
-								_Translator.Push (luaState, method.Invoke (null, args));
-							else {
-								if (method.IsConstructor)
-									_Translator.Push (luaState, ((ConstructorInfo)method).Invoke (args));
-								else
-									_Translator.Push (luaState, method.Invoke (targetObject, args));
-							}
+							if (matched) {
+								if (_IsStatic)
+									_Translator.Push (luaState, method.Invoke (null, args));
+								else {
+									if (method.IsConstructor)
+										_Translator.Push (luaState, ((ConstructorInfo)method).Invoke (args));
+									else
+										_Translator.Push (luaState, method.Invoke (targetObject, args));
+								}
 
-							failedCall = false;
+								// Cache hit (success)
+								failedCall = false;
+							}
 						} catch (TargetInvocationException e) {
 							// Failure of method invocation
 							return SetPendingException (e.GetBaseException ());
