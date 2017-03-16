@@ -3,7 +3,7 @@
 	url = git://github.com/NLua/KopiLua.git
 [submodule "Core/KeraLua"]
 	path = Core/KeraLua
-	url = git://github.com/NLua/KeraLua.git
+	url = https://github.com/kalin-toshev/KeraLua.git
 [submodule "tests/LuaTests"]
 	path = tests/LuaTests
 	url = git://github.com/NLua/LuaTests.git
